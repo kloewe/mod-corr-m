@@ -34,6 +34,11 @@ function r = tetracc(data,varargin)
 %   found using rt = -cos(2*pi*n11/M), where n11 is the number of 
 %   observations where both binarized variables are 1.
 %
+%   If you use this program, please cite:
+%   Fast construction of voxel-level functional connectivity graphs
+%   K. Loewe, M. Grueschow, C. Stoppel, R. Kruse, and C. Borgelt
+%   BMC Neuroscience 15:78 (2014)
+%
 %   See also PCC, TOSYMMAT.
 %
 %   Filename : tetracc.m
