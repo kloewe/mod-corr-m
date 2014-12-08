@@ -32,7 +32,7 @@ function r = pcc(data,varargin)
 %   K. Loewe, M. Grueschow, C. Stoppel, R. Kruse, and C. Borgelt
 %   BMC Neuroscience 15:78 (2014)
 %
-%   See also TETRACC, TOSYMMAT.
+%   See also TETRACC, TOSYMMAT, SUB2UTM.
 %
 %   File    : pcc.m
 %   Author  : Kristian Loewe

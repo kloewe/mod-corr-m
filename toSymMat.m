@@ -6,7 +6,7 @@ function matrix = toSymMat(vect,varargin)
 %   By default, S has ones along its diagonal.
 %   Using S = TOSYMMAT(R,d), the diagonal values are replaced by d.
 %
-%   See also PCC, TETRACC.
+%   See also SUB2UTM, PCC, TETRACC.
 %
 %   File    : toSymMat.m
 %   Author  : Kristian Loewe
