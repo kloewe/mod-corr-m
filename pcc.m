@@ -80,7 +80,9 @@ else
   error('pcc:check_args', 'Unexpected number of input arguments.');
 end
 
-assert(isnumeric(data), ...            % make sure data is numeric ...
+assert(ndims(data) == 2, ...           % make sure ndims is 2 ...
+  'pcc:check_args', 'Data has unexpected number of dimensions.');
+assert(isnumeric(data), ...            % ... data is numeric ...
   'pcc:check_args', 'Data is not numeric.');
 assert(isreal(data), ...               % ... and not complex
   'pcc:check_args', 'Data is not real.');
