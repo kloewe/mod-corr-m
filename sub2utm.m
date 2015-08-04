@@ -19,6 +19,7 @@ assert(isscalar(n));
 assert(isvector(I) && isvector(J));
 assert(isequal(size(I),size(J)));
 assert(~any(isnan(I)) && ~any(isnan(J)));
+assert(~any(I==J));
 
 if ~exist('first','var')
   first = 1;
@@ -33,6 +34,11 @@ assert( min(I) >= 0 && max(I) <= n-1 && min(J) >= 0 && max(J) <= n-1 );
 
 idx = zeros(size(I));
 for k = 1:numel(I)
+  if I(k) > J(k)
+    tmp = I(k);
+    I(k) = J(k);
+    J(k) = tmp;
+  end
   idx(k) = I(k).*(n + n - I(k) - 3) ./ 2 - 1 + J(k);
 end
 
