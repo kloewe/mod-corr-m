@@ -16,18 +16,24 @@ function r = tetracc(data,varargin)
 %   Alternatively, the implementation variant to be used can be
 %   specified by the user using R = TETRACC(X,v,t,p)
 %
-%      v   'lut16'
-%          'sse2'
-%          'ssse3'
-%          'pop32'
-%          'pop64'
-%          'm128i'
+%      Implementation
+%      v  'lut16'
+%         'sse2'
+%         'ssse3'
+%         'pop32'
+%         'pop64'
+%         'm128i'
 %
-%      t   0        no tiling
-%          2-n      standard tiling using t's next power of 2 as tile size
+%      Tiling
+%      t  0        none
+%         2-n      standard tiling using t's next power of 2 as tile size
 %
-%      p   0        no threads
-%          2-n      parallelization using p threads
+%      Multi-threading
+%      p  0        auto  multi-threaded version (auto)
+%                        the number of threads is automatically determined
+%         1        none  single-threaded version
+%         2-n      user  multi-threaded version (user)
+%                        the number of threads is user-specified (through p)
 %
 %   Each variable in X is binarized with respect to its sample median; 
 %   then for each pair of variables the tetrachoric correlation rt is 
@@ -44,90 +50,100 @@ function r = tetracc(data,varargin)
 %   Filename : tetracc.m
 %   Author   : Kristian Loewe
 
-if nargin == 4                         % if optional arguments were passed
+if nargin == 4                       % --- get user-specified settings
+  impl = varargin{1};                % implementation (tetracc)
+  tile = varargin{2};                % tiling
+  nthd = varargin{3};                % multi-threading (number of threads)
 
-  variant = varargin{1};               % variant: get passed value
-  assert(ischar(variant));             % make sure passed value is char
-  vals = {'lut16','sse2', ...          % define valid values
-    'ssse3','pop32', ...
-    'pop64','m128i'};
-  assert(any(strcmp(variant,vals)));   % make sure passed value is valid
-
-  tile = uint32(varargin{2});          % tiling:  get passed value
-  assert(tile >= 0 ...                 % make sure passed value is 
-    && (round(tile) == tile));         % a natural number >= 0
-
-  nthreads = uint32(varargin{3});      % threads: get passed value
-  assert(nthreads >= 0 ...             % make sure passed value is 
-    && (round(nthreads) == nthreads)); % a natural number >= 0
-
-  switch variant                       % select variant
-    case 'lut16'
-      variant = uint32(1);             % lut16
-    case 'sse2'
-      variant = uint32(2);             % sse2
-    case 'ssse3'
-      variant = uint32(3);             % ssse3
-    case 'pop32'
-      variant = uint32(4);             % pop32
-    case 'pop64'
-      variant = uint32(5);             % pop64
-    case 'm128i'
-      variant = uint32(6);             % m128i
+elseif nargin == 1                   % --- auto-determine settings
+  if cpuinfo('popcnt')               % implementation -> depends on the cpu
+    impl = 'm128i';
+  else
+    impl = 'lut16';
   end
-
-  if tile > 0                          % use standard tiling
-    variant = bitor(variant,uint32(16));
-  end
-
-  if nthreads > 0                      % use threads
-    variant = bitor(variant,uint32(32));
-  end
-
-elseif nargin == 1                     % determine implementation variant
-  variant  = uint32(0);                % automatically (on the C side)
-  tile     = uint32(0);
-  nthreads = uint32(0);
+  tile = 0;                          % tiling -> none
+  nthd = 0;                          % nthd   -> will be auto-determined
 
 else
-  error('tetracc:check_args', 'Unexpected number of input arguments.');
+  error('Unexpected number of input arguments.');
 end
 
-assert(isnumeric(data), ...            % make sure data is numeric ...
-  'tetracc:check_args', 'Data is not numeric.');
-assert(isreal(data), ...               % ... and not complex
-  'tetracc:check_args', 'Data is not real.');
+variant = uint32(0);                 % --- check & parse settings
+assert(ischar(impl) ...              % variant
+  && ismember(impl, {'lut16','sse2','ssse3','pop32','pop64','m128i'}));
+switch impl                          %   adjust variant code
+  case 'lut16'
+    variant = bitor(variant, uint32(1));
+  case 'sse2'
+    variant = bitor(variant, uint32(2));
+  case 'ssse3'
+    variant = bitor(variant, uint32(3));
+  case 'pop32'
+    variant = bitor(variant, uint32(4));
+  case 'pop64'
+    variant = bitor(variant, uint32(5));
+  case 'm128i'
+    variant = bitor(variant, uint32(6));
+end
+assert(isnumeric(tile) ...           % tiling
+  && isscalar(tile) && tile >= 0 && tile ~= 1);
+tile = uint32(tile);
+if tile > 1                          %   enable standard tiling (variant code)
+  variant = bitor(variant, uint32(16));
+end
+assert(isnumeric(nthd) ...           % multi-threading
+  && isscalar(nthd));
+if nthd == 0                         %   auto-determine number of threads
+  try
+    nthd = feature('numcores');
+  catch ME %#ok<NASGU>
+    nthd = round(nproc()/2);
+  end
+  assert(isnumeric(nthd) && isscalar(nthd) && nthd >= 0 && nthd <= 1024);
+end
+nthd = uint32(nthd);
+if nthd > 0                          %   enable multi-threading (variant code)
+  variant = bitor(variant, uint32(64));
+end
 
-if strcmp(class(data),'single')        % call the appropriate mex/c - program
-  if tile                                              % tiling threads
-    if nthreads > 0
-      r = mxTetraccXxFlt(data,variant,tile,nthreads);  %    1      1
-    else
-      r = mxTetraccXxFlt(data,variant,tile);           %    1      0
+assert(ndims(data) == 2, ...         % --- check input data
+  'Data array has unexpected number of dimensions.');
+assert(isnumeric(data), ...
+  'Data array is not numeric.');
+assert(isreal(data), ...
+  'Data array is not real.');
+
+if strcmp(class(data),'single')      % --- call the appropriate C/MEX routine
+  if tile > 1
+    if nthd > 0                      % standard tiling / multiple threads
+      r = mxTetraccXxFlt(data,variant,tile,nthd);
+    else                             % standard tiling / single thread
+      r = mxTetraccXxFlt(data,variant,tile);
     end
   else
-    if nthreads > 0
-      r = mxTetraccXxFlt(data,variant,nthreads);       %    0      1
-    else
+    if nthd > 0                      % no tiling       / multiple threads
+      r = mxTetraccXxFlt(data,variant,nthd);
+    else                             % no tiling       / single thread
       r = mxTetraccXxFlt(data,variant);
     end
   end
 elseif strcmp(class(data),'double')
   if tile
-    if nthreads > 0
-      r = mxTetraccXxDbl(data,variant,tile,nthreads);  %    1      1
-    else
-      r = mxTetraccXxDbl(data,variant,tile);           %    1      0
+    if nthd > 0                      % standard tiling / multiple threads
+      r = mxTetraccXxDbl(data,variant,tile,nthd);
+    else                             % standard tiling / single thread
+      r = mxTetraccXxDbl(data,variant,tile);
     end
   else
-    if nthreads > 0
-      r = mxTetraccXxDbl(data,variant,nthreads);       %    0      1
-    else
+    if nthd > 0                      % no tiling       / multiple threads
+      r = mxTetraccXxDbl(data,variant,nthd);
+    else                             % no tiling       / single thread
       r = mxTetraccXxDbl(data,variant);
     end
   end
 else
-  error('tetracc:check_args','Data is of unexpected type.');
+  error('Data array is of unexpected type.');
 end
 
 end
+

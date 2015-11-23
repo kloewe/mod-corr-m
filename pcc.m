@@ -16,16 +16,22 @@ function r = pcc(data,varargin)
 %   Alternatively, the implementation variant to be used can be
 %   specified by the user using R = PCC(X,v,t,p)
 %
-%      v   'naive'
-%          'sse2'   use SSE2 instructions
-%          'avx'    use AVX  instructions
+%      Vectorization
+%      v  'naive'  none
+%         'sse2'   use SSE2 instructions
+%         'avx'    use AVX  instructions
 %
-%      t   0        no tiling
-%          1        cache-oblivious tiling
-%          2-n      standard tiling using t's next power of 2 as tile size
+%      Tiling
+%      t  0        none
+%         1        cache-oblivious tiling
+%         2-n      standard tiling using t's next power of 2 as tile size
 %
-%      p   0        no threads
-%          2-n      parallelization using p threads
+%      Multi-threading
+%      p  0        auto  multi-threaded version (auto)
+%                        the number of threads is automatically determined
+%         1        none  single-threaded version
+%         2-n      user  multi-threaded version (user)
+%                        the number of threads is user-specified (through p)
 %
 %   If you use this program, please cite:
 %   Fast construction of voxel-level functional connectivity graphs
@@ -37,105 +43,110 @@ function r = pcc(data,varargin)
 %   File    : pcc.m
 %   Author  : Kristian Loewe
 
-if nargin == 4                          % --- get user-specified settings
-  tile = varargin{2};                   % tiling
-  nthd = varargin{3};                   % number of threads
-  impl = varargin{1};                   % implementation
+if nargin == 4                       % --- get user-specified settings
+  vect = varargin{1};                % vectorization
+  tile = varargin{2};                % tiling
+  nthd = varargin{3};                % multi-threading (number of threads)
 
-elseif nargin == 1                      % --- auto-determine settings
-  tile = 1;                             % tiling -> use COBL
-  try                                   % nthd   -> try to determine #cores
-    nthd = feature('numcores');
-  catch ME
-    nthd = round(nproc/2);
-  end
-  if     cpuinfo('avx')                 % impl.  -> depends on the cpu
-    impl = 'avx';
+elseif nargin == 1                   % --- auto-determine settings
+  if     cpuinfo('avx')              % vect.  -> depends on the cpu
+    vect = 'avx';
   elseif cpuinfo('sse2')
-    impl = 'sse2';
+    vect = 'sse2';
   else
-    impl = 'naive';
+    vect = 'naive';
   end
+  tile = 1;                          % tiling -> use COBL
+  nthd = 0;                          % nthd   -> will be auto-determined
 
 else
   error('Unexpected number of input arguments.');
 end
 
-variant = uint32(0);                    % --- check & parse settings
-assert(isnumeric(tile) ...              % tiling
-  && isscalar(tile) && tile >= 0);
-tile = uint32(tile);
-if     tile == 1                        % use COBL
-  variant = bitor(variant, uint32(32));
-elseif tile > 1                         % use standard tiling
-  variant = bitor(variant, uint32(16));
-end
-assert(isnumeric(nthd) ...              % number of threads
-  && isscalar(nthd) && nthd >= 0 && nthd <= 48);
-nthd = uint32(nthd);
-if nthd > 0
-  variant = bitor(variant, uint32(64)); % enable multi-threading
-end
-assert(ischar(impl) ...                 % implementation
-  && ismember(impl, {'avx','sse2','naive'}));
-switch impl
-  case 'avx'
-    variant = bitor(variant, uint32(3));
-  case 'sse2'
-    variant = bitor(variant, uint32(2));
+variant = uint32(0);                 % --- check & parse settings
+assert(ischar(vect) ...              % vectorization
+  && ismember(vect, {'avx','sse2','naive'}));
+switch vect                          % adjust variant code
   case 'naive'
     variant = bitor(variant, uint32(1));
+  case 'sse2'
+    variant = bitor(variant, uint32(2));
+  case 'avx'
+    variant = bitor(variant, uint32(3));
+end
+assert(isnumeric(tile) ...           % tiling
+  && isscalar(tile) && tile >= 0);
+tile = uint32(tile);
+if     tile == 1                     %   enable COBL (variant code)
+  variant = bitor(variant, uint32(32));
+elseif tile > 1                      %   enable standard tiling (variant code)
+  variant = bitor(variant, uint32(16));
+end
+assert(isnumeric(nthd) ...           % multi-threading
+  && isscalar(nthd));
+if nthd == 0                         %   auto-determine number of threads
+  try
+    nthd = feature('numcores');
+  catch ME %#ok<NASGU>
+    nthd = round(nproc()/2);
+  end
+  assert(isnumeric(nthd) && isscalar(nthd) && nthd >= 0 && nthd <= 1024);
+end
+nthd = uint32(nthd);
+if nthd > 0                          %   enable multi-threading (variant code)
+  variant = bitor(variant, uint32(64));
 end
 
-assert(ndims(data) == 2, ...            % --- check input data
+assert(ndims(data) == 2, ...         % --- check input data
   'Data array has unexpected number of dimensions.');
 assert(isnumeric(data), ...
   'Data array is not numeric.');
 assert(isreal(data), ...
   'Data array is not real.');
 
-if strcmp(class(data),'single')         % --- call C/MEX program
+if strcmp(class(data),'single')      % --- call the appropriate C/MEX routine
   if tile == 1
-    if nthd > 0                         % COBL tiling     / multiple threads
+    if nthd > 0                      % COBL tiling     / multiple threads
       r = mxPccXxFlt(data,variant,nthd);
-    else                                % COBL tiling     / single thread
+    else                             % COBL tiling     / single thread
       r = mxPccXxFlt(data,variant);
     end
   elseif tile > 1
-    if nthd > 0                         % standard tiling / multiple threads
+    if nthd > 0                      % standard tiling / multiple threads
       r = mxPccXxFlt(data,variant,tile,nthd);
-    else                                % standard tiling / single thread
+    else                             % standard tiling / single thread
       r = mxPccXxFlt(data,variant,tile);
     end
   else
-    if nthd > 0                         % no tiling       / multiple threads
+    if nthd > 0                      % no tiling       / multiple threads
       r = mxPccXxFlt(data,variant,nthd);
-    else
+    else                             % no tiling       / single thread
       r = mxPccXxFlt(data,variant);
     end
   end
 elseif strcmp(class(data),'double')
   if tile == 1
-    if nthd > 0                         % COBL tiling     / multiple threads
+    if nthd > 0                      % COBL tiling     / multiple threads
       r = mxPccXxDbl(data,variant,nthd);
-    else                                % COBL tiling     / single thread
+    else                             % COBL tiling     / single thread
       r = mxPccXxDbl(data,variant);
     end
   elseif tile > 1
-    if nthd > 0                         % standard tiling / multiple threads
+    if nthd > 0                      % standard tiling / multiple threads
       r = mxPccXxDbl(data,variant,tile,nthd);
-    else                                % standard tiling / single thread
+    else                             % standard tiling / single thread
       r = mxPccXxDbl(data,variant,tile);
     end
   else
-    if nthd > 0                         % no tiling       / multiple threads
+    if nthd > 0                      % no tiling       / multiple threads
       r = mxPccXxDbl(data,variant,nthd);
-    else
+    else                             % no tiling       / single thread
       r = mxPccXxDbl(data,variant);
     end
   end
 else
-  error('pcc:check_args','Data is of unexpected type.');
+  error('Data array is of unexpected type.');
 end
 
 end
+
