@@ -78,7 +78,7 @@ if nthd > 0
 end
 assert(ischar(impl) ...                 % implementation
   && ismember(impl, {'avx','sse2','naive'}));
-switch variant
+switch impl
   case 'avx'
     variant = bitor(variant, uint32(3));
   case 'sse2'
