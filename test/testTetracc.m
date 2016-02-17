@@ -1,3 +1,7 @@
+%TESTTETRACC
+%
+% Author: Kristian Loewe
+
 addpath(fullfile('..','cpuinfo-m'));
 addpath(fullfile('..','corr-m'));
 
@@ -7,7 +11,7 @@ if ~cpuinfo('popcnt')
 end
 
 %% test 1
-fprintf('Test 1 ... ');
+fprintf('Test 1 ...\n');
 a = logical([1 1 1 0 0 0 1 0]);
 b = logical([0 1 1 0 0 0 1 1]);
 n11 = sum(a & b);
@@ -24,7 +28,7 @@ assert(isequal(rt,tetracc([aflt(:),bflt(:)])));
 fprintf('[PASSED]\n');
 
 %% test 2 (actually a series of tests)
-fprintf('Test 2 ... ');
+fprintf('Test 2 ...\n');
 quick = 1;
 if quick
   nV = 5000;
@@ -34,7 +38,7 @@ else
   nT = [50,100,175,200,300,400,500,2,4,8,16,32,64,128,256,512];
 end
 
-nP = 0:nproc();
+nP = 0:proccnt();
 
 for iV = 1:numel(nV)
   for iT = 1:numel(nT)

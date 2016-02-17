@@ -85,10 +85,12 @@ end
 assert(isnumeric(nthd) ...           % multi-threading
   && isscalar(nthd));
 if nthd == 0                         %   auto-determine number of threads
-  try
-    nthd = feature('numcores');
-  catch ME %#ok<NASGU>
-    nthd = round(nproc()/2);
+  ncores = corecnt();
+  nprocs = proccnt();
+  if ncores == nprocs/2
+    nthd = ncores + ncores/2;
+  else
+    nthd = ncores;
   end
   assert(isnumeric(nthd) && isscalar(nthd) && nthd >= 0 && nthd <= 1024);
 end

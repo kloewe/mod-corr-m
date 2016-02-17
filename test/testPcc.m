@@ -1,3 +1,7 @@
+%TESTPCC
+%
+% Author: Kristian Loewe
+
 addpath(fullfile('..','cpuinfo-m'));
 addpath(fullfile('..','corr-m'));
 
@@ -45,22 +49,22 @@ else
   % TODO: check why AVX fails for T < 4
 end
 
-nP = 1:nproc();
+nP = 0:proccnt();
 
 
 for dtype = {'single','double'}
   for iV = 1:numel(nV)
     for iT = 1:numel(nT)
       if verbose; fprintf('\nV: %u  T: %u\n', nV(iV), nT(iT)); end
-      
+
       data = rand(nT(iT), nV(iV), dtype{1});      % generate random data
       limmad = 5*eps(dtype{1});
       limsad = limmad*(nV(iV)*(nV(iV)-1)/2);
-      
+
       res1 = corrcoef(data);                      % corrcoef (!REFERENCE!)
       res1 = res1(logical(tril(ones(nV(iV)),-1)));
       res1 = res1(:);
-      
+
       % --- single-thread variants ---
       if verbose; fprintf('naive\n'); end
       res2 = pcc(data, 'naive', 0, 0);            % naive
@@ -73,7 +77,7 @@ for dtype = {'single','double'}
       assert(isequal(res2,res2b));
       res2c = pcc(data, 'naive', 1, 0);           % naive + cobl
       assert(isequal(res2,res2c));
-      
+
       if verbose; fprintf('sse2\n'); end
       res3 = pcc(data, 'sse2', 0, 0);             % sse2
       mad = max(abs(res2-res3));                  % max abs diffs
@@ -85,7 +89,7 @@ for dtype = {'single','double'}
       assert(isequal(res3,res3b));
       res3c = pcc(data, 'sse2', 1, 0);            % sse2  + cobl
       assert(isequal(res3,res3c));
-      
+
       if cpuinfo('avx')
         if verbose; fprintf('avx\n'); end
         res4 = pcc(data, 'avx', 0, 0);            % avx
@@ -99,7 +103,7 @@ for dtype = {'single','double'}
         res4c = pcc(data, 'avx', 1, 0);           % avx  + cobl
         assert(isequal(res4,res4c));
       end
-      
+
       % --- multi-thread variants ---
       if ~quick
         for iP = 1:numel(nP)
@@ -109,14 +113,14 @@ for dtype = {'single','double'}
           assert(isequal(res2,res2e));
           res2f = pcc(data, 'naive', 1, nP(iP));  % naive + cobl   + threads
           assert(isequal(res2,res2f));
-          
+
           res3d = pcc(data, 'sse2',  0, nP(iP));  % sse2 + threads
           assert(isequal(res3,res3d));
           res3e = pcc(data, 'sse2',  2, nP(iP));  % sse2 + tiling  + threads
           assert(isequal(res3,res3e));
           res3f = pcc(data, 'sse2',  1, nP(iP));  % sse2 + cobl    + threads
           assert(isequal(res3,res3f));
-          
+
           if cpuinfo('avx')
             res4d = pcc(data, 'avx',  0, nP(iP)); % avx + threads
             assert(isequal(res4,res4d));
@@ -127,7 +131,7 @@ for dtype = {'single','double'}
           end
         end
       end
-      
+
     end
   end
 end
