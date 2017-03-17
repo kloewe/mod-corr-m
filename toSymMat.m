@@ -1,5 +1,5 @@
 function matrix = toSymMat(vect,varargin)
-%TOSYMMAT Format correlation matrix.
+%TOSYMMAT Convert vector of upper triangular elems into a symmetric matrix.
 %   S = TOSYMMAT(R) converts R into a square, symmetric matrix S,
 %   where R is a vector of pairwise correlation coefficients as
 %   created by the functions PCC or TETRACC.

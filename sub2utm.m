@@ -1,5 +1,5 @@
 function idx = sub2utm(I,J,n,first)
-%SUB2UTM Linear index (wrt upper triangle) from matrix subscripts
+%SUB2UTM Linear index (wrt upper triangle) from matrix subscripts.
 %   SUB2UTM is used to determine the equivalent linear index (wrt a
 %   vector of upper triangular matrix elements) corresponding to the
 %   specified row and column subscripts (wrt a symmetric n-by-n matrix).
