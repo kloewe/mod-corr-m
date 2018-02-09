@@ -56,7 +56,7 @@ if nargin == 4                       % --- get user-specified settings
   nthd = varargin{3};                % multi-threading (number of threads)
 
 elseif nargin == 1                   % --- auto-determine settings
-  if cpuinfo('popcnt')               % implementation -> depends on the cpu
+  if hasIsaExtension('popcnt')       % implementation -> depends on the cpu
     impl = 'm128i';
   else
     impl = 'lut16';

@@ -49,9 +49,9 @@ if nargin == 4                       % --- get user-specified settings
   nthd = varargin{3};                % multi-threading (number of threads)
 
 elseif nargin == 1                   % --- auto-determine settings
-  if     cpuinfo('avx')              % vect.  -> depends on the cpu
+  if     hasIsaExtension('avx')      % vect.  -> depends on the cpu
     vect = 'avx';
-  elseif cpuinfo('sse2')
+  elseif hasIsaExtension('sse2')
     vect = 'sse2';
   else
     vect = 'naive';
