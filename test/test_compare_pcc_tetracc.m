@@ -1,8 +1,15 @@
-addpath('..');
+%TEST_COMPARE_PCC_TETRACC
+%
+%   Requires the following modules:
+%
+%     cpuinfo-m
+%     corr-m
+%
+%   Author: Kristian Loewe
 
 nVoxels = 500;
 nTimepts = 200;
-res = zeros(nVoxels*(nVoxels-1)/2,3);
+res = zeros(nVoxels*(nVoxels-1)/2, 3);
 
 for i = 1:numel(nVoxels)
     nV = nVoxels(i);

@@ -1,14 +1,19 @@
 %TESTTETRACC
 %
-% Author: Kristian Loewe
+%   Requires the following modules:
+%
+%     cpuinfo-m
+%     corr-m
+%
+%   Author: Kristian Loewe
 
-addpath(fullfile('..','cpuinfo-m'));
-addpath(fullfile('..','corr-m'));
-
-if ~cpuinfo('popcnt')
+if ~hasIsaExtension('popcnt')
     warning('testTetracc:NoPopcntSupport', ...
         'POPCNT-based variants cannot be tested on this computer.\n');
 end
+
+quick = 0;
+
 
 %% test 1
 fprintf('Test 1 ...\n');
@@ -23,19 +28,19 @@ bflt = single([2 5 5 2 2 2 5 5]);
 % dichotomize([5 5 5 2 2 2 5 2]) -> [1 1 1 0 0 0 1 0]
 % dichotomize([2 5 5 2 2 2 5 5]) -> [0 1 1 0 0 0 1 1]
 
-assert(isequal(rt,tetracc([aflt(:),bflt(:)])));
+assert(isequal(rt, tetracc([aflt(:), bflt(:)])));
 
 fprintf('[PASSED]\n');
 
+
 %% test 2 (actually a series of tests)
 fprintf('Test 2 ...\n');
-quick = 1;
 if quick
   nV = 5000;
   nT = 200;
 else
-  nV = [2,501,1000,5000];
-  nT = [50,100,175,200,300,400,500,2,4,8,16,32,64,128,256,512];
+  nV = [2,3,4,7,15,17,501,1000,5000];
+  nT = [2:50,64,100,128,175,200,256,300,400,500,512];
 end
 
 nP = 0:proccnt();
@@ -54,7 +59,7 @@ for iV = 1:numel(nV)
         assert(isequal(res1,res2));
         res2 = tetracc(data, 'ssse3', tile, nP(iP));     % ssse3
         assert(isequal(res1,res2));
-        if cpuinfo('popcnt')
+        if hasIsaExtension('popcnt')
           res2 = tetracc(data, 'pop32', tile, nP(iP));   % pop32
           assert(isequal(res1,res2));
           res2 = tetracc(data, 'pop64', tile, nP(iP));   % pop64

@@ -1,28 +1,29 @@
-%TESTPCC
+%TEST_PCC
 %
-% Author: Kristian Loewe
+%   Requires the following modules:
+%
+%     cpuinfo-m
+%     corr-m
+%
+%   Author: Kristian Loewe
 
-addpath(fullfile('..','cpuinfo-m'));
-addpath(fullfile('..','corr-m'));
-
-if ~cpuinfo('avx')
+if ~hasIsaExtension('avx')
   warning('testPcc:NoAvxSupport', ...
     'AVX-based variants cannot be tested on this computer.\n');
 end
 
-
-%%
 verbose = 0;
 quick = 0;
+
 
 %% test 1
 fprintf('\nTest 1 ...\n');
 
 % single
-a = [0.4430098; 0.5680599; 0.3433261; 0.9175944; 0.3769222; 0.9770406];
-b = [0.1130724; 0.1368889; 0.5478951; 0.0083151; 0.9292043; 0.1646702];
-c1 = pcc(single([a(:),b(:)]));
-c2 = corrcoef(single([a(:),b(:)]));
+a = [0.4430098 0.5680599 0.3433261 0.9175944 0.3769222 0.9770406];
+b = [0.1130724 0.1368889 0.5478951 0.0083151 0.9292043 0.1646702];
+c1 = pcc(single([a(:), b(:)]));
+c2 = corrcoef(single([a(:), b(:)]));
 c2 = c2(2);
 fprintf('single ->  pcc: %f  corrcoef: %f  diff: %e\n', c1, c2, c2-c1);
 assert( abs(c2-c1) < 10*eps('single') );
@@ -30,13 +31,14 @@ assert( abs(c2-c1) < 10*eps('single') );
 % double
 a = [0.325733108917976 0.060120769323398 0.306466746642906 0.568924908300412];
 b = [0.606927621835917 0.747400804922340 0.171137060673563 0.490894896500361];
-c1 = pcc(double([a(:),b(:)]));
-c2 = corrcoef([a(:),b(:)]);
+c1 = pcc(double([a(:), b(:)]));
+c2 = corrcoef([a(:), b(:)]);
 c2 = c2(2);
 fprintf('double ->  pcc: %f  corrcoef: %f  diff: %e\n', c1, c2, c2-c1);
 assert( abs(c2-c1) < 10*eps('double') );
 
 fprintf('[PASSED]\n\n');
+
 
 %% test 2 (actually a series of tests)
 fprintf('Test 2 ...\n');
@@ -50,7 +52,6 @@ else
 end
 
 nP = 0:proccnt();
-
 
 for dtype = {'single','double'}
   for iV = 1:numel(nV)
@@ -90,7 +91,7 @@ for dtype = {'single','double'}
       res3c = pcc(data, 'sse2', 1, 0);            % sse2  + cobl
       assert(isequal(res3,res3c));
 
-      if cpuinfo('avx')
+      if hasIsaExtension('avx')
         if verbose; fprintf('avx\n'); end
         res4 = pcc(data, 'avx', 0, 0);            % avx
         mad = max(abs(res2-res4));                % max abs diffs
@@ -121,7 +122,7 @@ for dtype = {'single','double'}
           res3f = pcc(data, 'sse2',  1, nP(iP));  % sse2 + cobl    + threads
           assert(isequal(res3,res3f));
 
-          if cpuinfo('avx')
+          if hasIsaExtension('avx')
             res4d = pcc(data, 'avx',  0, nP(iP)); % avx + threads
             assert(isequal(res4,res4d));
             res4e = pcc(data, 'avx',  2, nP(iP)); % avx + tiling   + threads
