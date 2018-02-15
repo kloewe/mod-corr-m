@@ -66,6 +66,9 @@ end
 variant = uint32(0);                 % --- check & parse settings
 assert(ischar(vect) ...              % vectorization
   && ismember(vect, {'avx','sse2','naive'}));
+if size(data,1) < 8                  % if M < 8 fallback to SSE2
+  vect = 'sse2';                     % (todo: fix problem with AVX-version)
+end
 switch vect                          % adjust variant code
   case 'naive'
     variant = bitor(variant, uint32(1));

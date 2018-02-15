@@ -72,37 +72,3 @@ for iV = 1:numel(nV)
   end
 end
 fprintf('[PASSED]\n');
-
-%% test 3:  Check against old version 
-% nV = [2,501,1000,5000];
-% nT = [3,50,100,175,200,300,400,500,2,4,8,16,32,64,128,256,512];
-% for i = 1:10000
-% for iV = 1:numel(nV)
-%   for iT = 1:numel(nT)
-%     data = rand(nT(iT),nV(iV),'single');
-%     
-%     addpath /opt/klt/fc-tools/fc-tools-0.1-38/simimat/
-%     addpath /opt/klt/fc-tools/fc-tools-0.1-38/util/
-%     addpath /opt/klt/fc-tools/fc-tools-0.1-38/dicho/
-% %     which tetracc
-%     res1 = tetracc(data,'parallel',0);
-%     
-%     
-%     addpath /home/kris/workspace/projects/klt/fc-tools/fc-tools/m/corr/tbx/
-% %     which tetracc
-%     res2 = tetracc(data);
-%     
-% %     assert(isequal(res1,res2));
-%     mad = max(abs(res1-res2));              % max abs diff
-%     sad = sum(abs(res1-res2));              % sum of abs diffs
-% %     if verbose
-%       fprintf('\n  max of abs differences:  %e\n', mad);
-%       fprintf('  sum of abs differences:  %e\n', sad);
-% %     end
-%     assert( mad < 1e-06 && sad < 5e-07*(nV(iV)*(nV(iV)-1)/2) );
-%   end
-% end
-% end
-% fprintf('[PASSED]\n');
-% 
-
