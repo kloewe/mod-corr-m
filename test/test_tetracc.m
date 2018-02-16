@@ -12,6 +12,7 @@ if ~hasIsaExtension('popcnt')
         'POPCNT-based variants cannot be tested on this computer.\n');
 end
 
+verbose = 0;
 quick = 0;
 
 
@@ -39,36 +40,41 @@ if quick
   nV = 5000;
   nT = 200;
 else
-  nV = [2,3,4,7,15,17,501,1000,5000];
+  nV = [2,3,4,7,15,17,501,1000,2000,5000];
   nT = [2:50,64,100,128,175,200,256,300,400,500,512];
 end
 
 nP = 0:proccnt();
 
-for iV = 1:numel(nV)
-  for iT = 1:numel(nT)
-    data = rand(nT(iT),nV(iV),'single');    % generate random data
+for dtype = {'single','double'}
+  for iV = 1:numel(nV)
+    for iT = 1:numel(nT)
+      if verbose; fprintf('\nV: %u  T: %u\n', nV(iV), nT(iT)); end
 
-    res1 = tetracc(data, 'lut16', 0, 0);    % lut16 (!REFERENCE!)
+      data = rand(nT(iT),nV(iV),dtype{1});    % generate random data
 
-    for tile = [0, 2.^[1:14]]
-      for iP = 1:numel(nP)
-        res2 = tetracc(data, 'lut16', tile, nP(iP));     % lut16
-        assert(isequal(res1,res2));
-        res2 = tetracc(data, 'sse2',  tile, nP(iP));     % sse2
-        assert(isequal(res1,res2));
-        res2 = tetracc(data, 'ssse3', tile, nP(iP));     % ssse3
-        assert(isequal(res1,res2));
-        if hasIsaExtension('popcnt')
-          res2 = tetracc(data, 'pop32', tile, nP(iP));   % pop32
+      res1 = tetracc(data, 'lut16', 0, 0);    % lut16 (!REFERENCE!)
+
+      for tile = [0, 2.^[1:14]]
+        for iP = 1:numel(nP)
+          res2 = tetracc(data, 'lut16', tile, nP(iP));     % lut16
           assert(isequal(res1,res2));
-          res2 = tetracc(data, 'pop64', tile, nP(iP));   % pop64
+          res2 = tetracc(data, 'sse2',  tile, nP(iP));     % sse2
           assert(isequal(res1,res2));
-          res2 = tetracc(data, 'm128i', tile, nP(iP));   % m128i
+          res2 = tetracc(data, 'ssse3', tile, nP(iP));     % ssse3
           assert(isequal(res1,res2));
+          if hasIsaExtension('popcnt')
+            res2 = tetracc(data, 'pop32', tile, nP(iP));   % pop32
+            assert(isequal(res1,res2));
+            res2 = tetracc(data, 'pop64', tile, nP(iP));   % pop64
+            assert(isequal(res1,res2));
+            res2 = tetracc(data, 'm128i', tile, nP(iP));   % m128i
+            assert(isequal(res1,res2));
+          end
         end
       end
     end
   end
 end
+
 fprintf('[PASSED]\n');

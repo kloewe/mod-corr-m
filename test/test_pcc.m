@@ -35,7 +35,7 @@ c1 = pcc(double([a(:), b(:)]));
 c2 = corrcoef([a(:), b(:)]);
 c2 = c2(2);
 fprintf('double ->  pcc: %f  corrcoef: %f  diff: %e\n', c1, c2, c2-c1);
-assert( abs(c2-c1) < 10*eps('double') );
+assert(abs(c2-c1) < 10*eps('double'));
 
 fprintf('[PASSED]\n\n');
 
@@ -46,7 +46,7 @@ if quick
   nV = 5000;
   nT = 200;
 else
-  nV = [2,3,4,7,15,17,501,1000,5000];
+  nV = [2,3,4,7,15,17,501,1000,2000,5000];
   nT = [2:50,64,100,128,175,200,256,300,400,500,512];
 end
 
