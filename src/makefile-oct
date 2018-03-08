@@ -1,0 +1,72 @@
+#-----------------------------------------------------------------------------
+# File    : makefile-oct
+# Contents: build MEX-files
+#           NB: tested with octave 4.2.1
+# Author  : Kristian Loewe
+#           (modifications for octave by Christina Rossmanith)
+#-----------------------------------------------------------------------------
+.SUFFIXES:                                   # remove built-in rules
+MAKEFLAGS    += -r
+
+SHELL           = /bin/bash
+CORRDIR         = ../../corr/src
+CPUINFODIR      = ../../cpuinfo/src
+
+MEX             = mkoctfile --mex
+OPTS            = -O
+# OPTS          = -v -O      # verbose mex output
+# OPTS          = -g -v -O   # verbose mex output & debugging
+DEFS            = -DNDEBUG
+CFLAGS          = CFLAGS='-Wall -Wextra -Wno-unused-parameter -Wconversion \
+                  -pedantic -fPIC -std=c99 -march=native'
+COPTIMFLAGS_PCC = COPTIMFLAGS='-O3 -funroll-loops'
+COPTIMFLAGS_TCC = COPTIMFLAGS='-O3'
+# COPTIMFLAGS_PCC = COPTIMFLAGS='-O2'        # debugging
+# COPTIMFLAGS_TCC = $(COPTIMFLAGS_PCC)       # debugging
+INCS            = -I$(CORRDIR) -I$(CPUINFODIR)
+SUF             = mex
+OUTDIR          = ../private
+
+LIBS            = -lm -lpthread
+
+PRGS            = $(addprefix $(OUTDIR)/,\
+                    mxPccXxFlt.$(SUF)     mxPccXxDbl.$(SUF) \
+                    mxTetraccXxFlt.$(SUF) mxTetraccXxDbl.$(SUF) )
+
+#-----------------------------------------------------------------------------
+# Build Programs
+#-----------------------------------------------------------------------------
+all: $(PRGS)
+
+$(PRGS): | $(OUTDIR)
+
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
+
+# pcc (flt)
+$(OUTDIR)/mxPccXxFlt.$(SUF): mxPccXx.c \
+$(CORRDIR)/pcc.* $(CPUINFODIR)/cpuinfo.* makefile-oct
+	$(CFLAGS) $(COPTIMFLAGS_PCC) \
+    $(MEX) $(OPTS) $(DEFS) -DREAL=float $(INCS) $(LIBS) \
+    $< $(CORRDIR)/pcc.c $(CPUINFODIR)/cpuinfo.c -o $@
+
+# pcc (dbl)
+$(OUTDIR)/mxPccXxDbl.$(SUF): mxPccXx.c \
+$(CORRDIR)/pcc.* $(CPUINFODIR)/cpuinfo.* makefile-oct
+	$(CFLAGS) $(COPTIMFLAGS_PCC) \
+    $(MEX) $(OPTS) $(DEFS) -DREAL=double $(INCS) $(LIBS) \
+    $< $(CORRDIR)/pcc.c $(CPUINFODIR)/cpuinfo.c -o $@
+
+# tetracc (flt)
+$(OUTDIR)/mxTetraccXxFlt.$(SUF): mxTetraccXx.c \
+$(CORRDIR)/tetracc.* $(CORRDIR)/binarize.* $(CPUINFODIR)/cpuinfo.* makefile-oct
+	$(CFLAGS) $(COPTIMFLAGS_TCC) \
+    $(MEX) $(OPTS) $(DEFS) -DREAL=float $(INCS) $(LIBS) \
+    $< $(CORRDIR)/tetracc.c $(CORRDIR)/binarize.c $(CPUINFODIR)/cpuinfo.c -o $@
+
+# tetracc (dbl)
+$(OUTDIR)/mxTetraccXxDbl.$(SUF): mxTetraccXx.c \
+$(CORRDIR)/tetracc.* $(CORRDIR)/binarize.* $(CPUINFODIR)/cpuinfo.* makefile-oct
+	$(CFLAGS) $(COPTIMFLAGS_TCC) \
+    $(MEX) $(OPTS) $(DEFS) -DREAL=double $(INCS) $(LIBS) \
+    $< $(CORRDIR)/tetracc.c $(CORRDIR)/binarize.c $(CPUINFODIR)/cpuinfo.c -o $@
