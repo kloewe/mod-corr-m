@@ -126,7 +126,11 @@ else
       er = 1;
       while (er > acc)
         rt = (L + U)/2;
-        p0 = mvncdf([h k], [0 0], [1 rt; rt 1]);
+        % p0 = mvncdf([h k], [0 0], [1 rt; rt 1]);
+        % p0 = mvncdf([h k], [], [1 rt; rt 1]);
+        p0 = internal.stats.bvncdf([h k], rt, 1e-8);
+        p0(p0 < 0) = 0;
+        p0(p0 > 1) = 1;
         er = U - L;
         if p0 > p11
           U = rt;
